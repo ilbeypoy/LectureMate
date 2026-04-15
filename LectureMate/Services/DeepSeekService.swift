@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 @Observable
 final class DeepSeekService: @unchecked Sendable {
     var isConfigured: Bool {

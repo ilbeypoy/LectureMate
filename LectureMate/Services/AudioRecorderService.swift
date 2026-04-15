@@ -1,9 +1,9 @@
 import Foundation
 import AVFoundation
-import Combine
 
+@MainActor
 @Observable
-final class AudioRecorderService: NSObject {
+final class AudioRecorderService: NSObject, @unchecked Sendable {
     var isRecording = false
     var isPaused = false
     var currentTime: TimeInterval = 0

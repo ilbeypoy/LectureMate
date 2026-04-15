@@ -2,8 +2,9 @@ import Foundation
 import Speech
 import AVFoundation
 
+@MainActor
 @Observable
-final class TranscriptionService: NSObject {
+final class TranscriptionService: NSObject, @unchecked Sendable {
     var isTranscribing = false
     var liveTranscript = ""
     var progress: Double = 0

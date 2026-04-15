@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import SwiftData
 
+@MainActor
 @Observable
 final class ScheduleViewModel {
     var selectedDay: Int = Calendar.current.component(.weekday, from: Date())

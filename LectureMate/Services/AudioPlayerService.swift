@@ -1,8 +1,9 @@
 import Foundation
 import AVFoundation
 
+@MainActor
 @Observable
-final class AudioPlayerService: NSObject {
+final class AudioPlayerService: NSObject, @unchecked Sendable {
     var isPlaying = false
     var currentTime: TimeInterval = 0
     var duration: TimeInterval = 0
