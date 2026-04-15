@@ -21,7 +21,7 @@ struct ChatView: View {
                             VStack(spacing: 8) {
                                 Image(systemName: "sparkles")
                                     .font(.title)
-                                    .foregroundStyle(.lmSecondary)
+                                    .foregroundStyle(Color.lmSecondary)
                                 Text("AI Asistan")
                                     .font(.headline)
                                 Text("\"\(recording.title)\" kaydinin transkriptine dayali sorular sorabilirsiniz.")
@@ -95,7 +95,7 @@ struct ChatView: View {
                         }
                     } label: {
                         Image(systemName: "paperplane.fill")
-                            .foregroundStyle(.lmPrimary)
+                            .foregroundStyle(Color.lmPrimary)
                     }
                     .disabled(vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || vm.isLoading)
                 }

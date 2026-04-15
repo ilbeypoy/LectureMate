@@ -21,7 +21,7 @@ struct RecordingRowView: View {
                     if let className = recording.classRef?.name {
                         Text(className)
                             .font(.caption)
-                            .foregroundStyle(.lmPrimary)
+                            .foregroundStyle(Color.lmPrimary)
                     }
 
                     Text(recording.recordedAt.relativeDateString)
@@ -37,19 +37,19 @@ struct RecordingRowView: View {
                     if recording.isTranscribed {
                         Label("Transkript", systemImage: "doc.text")
                             .font(.caption2)
-                            .foregroundStyle(.lmSuccess)
+                            .foregroundStyle(Color.lmSuccess)
                     }
 
                     if recording.aiSummary != nil {
                         Label("AI", systemImage: "sparkles")
                             .font(.caption2)
-                            .foregroundStyle(.lmSecondary)
+                            .foregroundStyle(Color.lmSecondary)
                     }
 
                     if !recording.bookmarks.isEmpty {
                         Label("\(recording.bookmarks.count)", systemImage: "bookmark.fill")
                             .font(.caption2)
-                            .foregroundStyle(.lmWarning)
+                            .foregroundStyle(Color.lmWarning)
                     }
                 }
             }

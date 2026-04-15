@@ -14,7 +14,7 @@ struct TranscriptView: View {
                     HStack(alignment: .top, spacing: 8) {
                         Text(formatTime(segment.startTime))
                             .font(.caption2.monospaced())
-                            .foregroundStyle(.lmPrimary)
+                            .foregroundStyle(Color.lmPrimary)
                             .frame(width: 40, alignment: .trailing)
 
                         Text(segment.text)

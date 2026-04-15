@@ -25,7 +25,7 @@ struct AIOnboardingView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(.lmSecondary.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [6]))
+                .strokeBorder(Color.lmSecondary.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [6]))
         )
     }
 
@@ -33,7 +33,7 @@ struct AIOnboardingView: View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.caption)
-                .foregroundStyle(.lmSecondary)
+                .foregroundStyle(Color.lmSecondary)
                 .frame(width: 20)
             Text(text)
                 .font(.caption)

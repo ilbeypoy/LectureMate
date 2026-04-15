@@ -160,7 +160,7 @@ struct StatItem: View {
         VStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.title3)
-                .foregroundStyle(.lmPrimary)
+                .foregroundStyle(Color.lmPrimary)
             Text(value)
                 .font(.headline)
             Text(label)

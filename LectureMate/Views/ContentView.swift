@@ -22,7 +22,7 @@ struct ContentView: View {
                 SettingsView()
             }
         }
-        .tint(.lmPrimary)
+        .tint(Color.lmPrimary)
         .environment(deepSeekService)
     }
 }

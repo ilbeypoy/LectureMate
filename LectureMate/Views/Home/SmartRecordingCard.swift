@@ -37,7 +37,7 @@ struct SmartRecordingCard: View {
             HStack {
                 Image(systemName: "waveform.circle.fill")
                     .font(.title)
-                    .foregroundStyle(.lmPrimary)
+                    .foregroundStyle(Color.lmPrimary)
                     .symbolEffect(.pulse)
                 VStack(alignment: .leading) {
                     Text("Su Anda Derstesin")
@@ -69,7 +69,7 @@ struct SmartRecordingCard: View {
                     .padding(.vertical, 12)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.lmAccent)
+            .tint(Color.lmAccent)
 
             HStack(spacing: 12) {
                 Button("Baska Ders", action: onChooseClass)
@@ -77,7 +77,7 @@ struct SmartRecordingCard: View {
                 Button("Serbest Kayit", action: onCustomRecord)
                     .font(.subheadline)
             }
-            .foregroundStyle(.lmPrimary)
+            .foregroundStyle(Color.lmPrimary)
         }
     }
 
@@ -88,7 +88,7 @@ struct SmartRecordingCard: View {
             HStack {
                 Image(systemName: "clock.badge.exclamationmark.fill")
                     .font(.title)
-                    .foregroundStyle(.lmWarning)
+                    .foregroundStyle(Color.lmWarning)
                 VStack(alignment: .leading) {
                     Text("\(minutes) dakika sonra")
                         .font(.caption)
@@ -108,7 +108,7 @@ struct SmartRecordingCard: View {
                     .padding(.vertical, 12)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.lmPrimary)
+            .tint(Color.lmPrimary)
 
             HStack(spacing: 12) {
                 Button("Baska Ders", action: onChooseClass)
@@ -116,7 +116,7 @@ struct SmartRecordingCard: View {
                 Button("Serbest Kayit", action: onCustomRecord)
                     .font(.subheadline)
             }
-            .foregroundStyle(.lmPrimary)
+            .foregroundStyle(Color.lmPrimary)
         }
     }
 
@@ -126,7 +126,7 @@ struct SmartRecordingCard: View {
         VStack(spacing: 12) {
             Image(systemName: "mic.badge.plus")
                 .font(.system(size: 40))
-                .foregroundStyle(.lmPrimary)
+                .foregroundStyle(Color.lmPrimary)
 
             Text("Ses Kaydi Baslat")
                 .font(.title3.bold())
@@ -145,7 +145,7 @@ struct SmartRecordingCard: View {
                         .padding(.vertical, 10)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.lmPrimary)
+                .tint(Color.lmPrimary)
 
                 Button {
                     onChooseClass()
@@ -155,7 +155,7 @@ struct SmartRecordingCard: View {
                         .padding(.vertical, 10)
                 }
                 .buttonStyle(.bordered)
-                .tint(.lmSecondary)
+                .tint(Color.lmSecondary)
             }
         }
     }

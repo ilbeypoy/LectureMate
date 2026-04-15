@@ -129,7 +129,7 @@ struct ScheduleView: View {
                         Text("kayit")
                             .font(.caption2)
                     }
-                    .foregroundStyle(.lmPrimary)
+                    .foregroundStyle(Color.lmPrimary)
                 }
             }
         }

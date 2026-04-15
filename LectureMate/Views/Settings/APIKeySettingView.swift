@@ -60,7 +60,7 @@ struct APIKeySettingView: View {
                     switch result {
                     case .success:
                         Label("Baglanti basarili!", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.lmSuccess)
+                            .foregroundStyle(Color.lmSuccess)
                     case .failure(let message):
                         Label(message, systemImage: "xmark.circle.fill")
                             .foregroundStyle(.red)

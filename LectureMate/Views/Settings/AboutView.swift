@@ -7,7 +7,7 @@ struct AboutView: View {
 
             Image(systemName: "mic.badge.waveform")
                 .font(.system(size: 60))
-                .foregroundStyle(.lmPrimary)
+                .foregroundStyle(Color.lmPrimary)
 
             Text("LectureMate")
                 .font(.largeTitle.bold())
@@ -38,7 +38,7 @@ struct AboutView: View {
     private func featureItem(icon: String, text: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .foregroundStyle(.lmPrimary)
+                .foregroundStyle(Color.lmPrimary)
                 .frame(width: 24)
             Text(text)
                 .font(.subheadline)

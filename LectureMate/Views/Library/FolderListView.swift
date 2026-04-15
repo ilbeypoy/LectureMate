@@ -15,7 +15,7 @@ struct FolderListView: View {
                 } label: {
                     HStack {
                         Image(systemName: folder.iconName)
-                            .foregroundStyle(.lmPrimary)
+                            .foregroundStyle(Color.lmPrimary)
                         Text(folder.name)
                         Spacer()
                         Text("\(folder.recordings.count)")

@@ -18,7 +18,7 @@ struct RecordingControlsView: View {
                 // Kayit Baslat
                 Button(action: onStart) {
                     Circle()
-                        .fill(.lmAccent)
+                        .fill(Color.lmAccent)
                         .frame(width: 80, height: 80)
                         .overlay {
                             Image(systemName: "mic.fill")
@@ -39,14 +39,14 @@ struct RecordingControlsView: View {
                         Text("Isaretle")
                             .font(.caption2)
                     }
-                    .foregroundStyle(.lmWarning)
+                    .foregroundStyle(Color.lmWarning)
                     .frame(width: 50, height: 50)
                 }
 
                 // Duraklat
                 Button(action: onPause) {
                     Circle()
-                        .fill(.lmPrimary)
+                        .fill(Color.lmPrimary)
                         .frame(width: 80, height: 80)
                         .overlay {
                             Image(systemName: "pause.fill")
@@ -63,7 +63,7 @@ struct RecordingControlsView: View {
                         Text("Bitir")
                             .font(.caption2)
                     }
-                    .foregroundStyle(.lmAccent)
+                    .foregroundStyle(Color.lmAccent)
                     .frame(width: 50, height: 50)
                 }
 
@@ -76,14 +76,14 @@ struct RecordingControlsView: View {
                         Text("Isaretle")
                             .font(.caption2)
                     }
-                    .foregroundStyle(.lmWarning)
+                    .foregroundStyle(Color.lmWarning)
                     .frame(width: 50, height: 50)
                 }
 
                 // Devam Et
                 Button(action: onResume) {
                     Circle()
-                        .fill(.lmSuccess)
+                        .fill(Color.lmSuccess)
                         .frame(width: 80, height: 80)
                         .overlay {
                             Image(systemName: "play.fill")
@@ -100,7 +100,7 @@ struct RecordingControlsView: View {
                         Text("Bitir")
                             .font(.caption2)
                     }
-                    .foregroundStyle(.lmAccent)
+                    .foregroundStyle(Color.lmAccent)
                     .frame(width: 50, height: 50)
                 }
 

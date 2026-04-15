@@ -111,7 +111,7 @@ struct RecordingDetailView: View {
                         .frame(width: 10, height: 10)
                     Text(classRef.name)
                         .font(.subheadline.bold())
-                        .foregroundStyle(.lmPrimary)
+                        .foregroundStyle(Color.lmPrimary)
                 }
             }
 
@@ -178,7 +178,7 @@ struct RecordingDetailView: View {
                         } label: {
                             VStack(spacing: 2) {
                                 Image(systemName: "bookmark.fill")
-                                    .foregroundStyle(.lmWarning)
+                                    .foregroundStyle(Color.lmWarning)
                                 Text(bookmark.formattedTimestamp)
                                     .font(.caption2.monospaced())
                                 if let label = bookmark.label {

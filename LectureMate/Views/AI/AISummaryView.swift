@@ -7,7 +7,7 @@ struct AISummaryView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "sparkles")
-                    .foregroundStyle(.lmSecondary)
+                    .foregroundStyle(Color.lmSecondary)
                 Text("AI Ozet")
                     .font(.subheadline.bold())
             }

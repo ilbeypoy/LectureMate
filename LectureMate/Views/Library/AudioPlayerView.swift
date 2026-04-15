@@ -14,7 +14,7 @@ struct AudioPlayerView: View {
                     ),
                     in: 0...max(playerVM.player.duration, 1)
                 )
-                .tint(.lmPrimary)
+                .tint(Color.lmPrimary)
 
                 HStack {
                     Text(playerVM.player.formattedCurrentTime)
@@ -64,7 +64,7 @@ struct AudioPlayerView: View {
                 } label: {
                     Image(systemName: playerVM.player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                         .font(.system(size: 44))
-                        .foregroundStyle(.lmPrimary)
+                        .foregroundStyle(Color.lmPrimary)
                 }
 
                 // 15sn ileri

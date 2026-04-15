@@ -29,7 +29,7 @@ struct SettingsView: View {
                         Spacer()
                         if vm.hasAPIKey {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.lmSuccess)
+                                .foregroundStyle(Color.lmSuccess)
                         } else {
                             Text("Ayarlanmamis")
                                 .font(.caption)
