@@ -1,0 +1,26 @@
+workflows:
+  ios-build:
+    name: LectureMate iOS Build
+    max_build_duration: 30
+    environment:
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          brew install xcodegen
+      - name: Generate Xcode Project
+        script: |
+          xcodegen generate
+      - name: Build iOS App
+        script: |
+          xcodebuild build \
+            -project LectureMate.xcodeproj \
+            -scheme LectureMate \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
