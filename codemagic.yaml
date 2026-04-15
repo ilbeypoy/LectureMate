@@ -21,11 +21,15 @@ workflows:
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
             -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tee /tmp/build.log
-          BUILD_RESULT=$?
-          echo "========== ERRORS =========="
-          grep "error:" /tmp/build.log || echo "No errors"
-          exit $BUILD_RESULT
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Create IPA
+        script: |
+          cd build/Build/Products/Debug-iphonesimulator
+          mkdir -p Payload
+          cp -r LectureMate.app Payload/
+          zip -r /tmp/LectureMate.ipa Payload
+          echo "IPA created at /tmp/LectureMate.ipa"
+          ls -lh /tmp/LectureMate.ipa
     artifacts:
-      - /tmp/build.log
+      - /tmp/LectureMate.ipa
