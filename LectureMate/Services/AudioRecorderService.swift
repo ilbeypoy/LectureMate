@@ -139,16 +139,20 @@ final class AudioRecorderService: NSObject, @unchecked Sendable {
 
 // MARK: - AVAudioRecorderDelegate
 
-extension AudioRecorderService: AVAudioRecorderDelegate {
-    func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
-        if !flag {
-            isRecording = false
-            isPaused = false
+extension AudioRecorderService: @preconcurrency AVAudioRecorderDelegate {
+    nonisolated func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
+        Task { @MainActor in
+            if !flag {
+                isRecording = false
+                isPaused = false
+            }
         }
     }
 
-    func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
-        isRecording = false
-        isPaused = false
+    nonisolated func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
+        Task { @MainActor in
+            isRecording = false
+            isPaused = false
+        }
     }
 }

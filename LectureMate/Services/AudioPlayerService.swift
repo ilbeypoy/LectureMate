@@ -108,10 +108,12 @@ final class AudioPlayerService: NSObject, @unchecked Sendable {
 
 // MARK: - AVAudioPlayerDelegate
 
-extension AudioPlayerService: AVAudioPlayerDelegate {
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        isPlaying = false
-        currentTime = 0
-        stopUpdateTimer()
+extension AudioPlayerService: @preconcurrency AVAudioPlayerDelegate {
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            isPlaying = false
+            currentTime = 0
+            stopUpdateTimer()
+        }
     }
 }
