@@ -6,21 +6,29 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab("Ana Sayfa", systemImage: "house.fill", value: 0) {
-                HomeView()
-            }
+            HomeView()
+                .tabItem {
+                    Label("Ana Sayfa", systemImage: "house.fill")
+                }
+                .tag(0)
 
-            Tab("Kutuphane", systemImage: "tray.full.fill", value: 1) {
-                RecordingsListView()
-            }
+            RecordingsListView()
+                .tabItem {
+                    Label("Kutuphane", systemImage: "tray.full.fill")
+                }
+                .tag(1)
 
-            Tab("Program", systemImage: "calendar", value: 2) {
-                ScheduleView()
-            }
+            ScheduleView()
+                .tabItem {
+                    Label("Program", systemImage: "calendar")
+                }
+                .tag(2)
 
-            Tab("Ayarlar", systemImage: "gear", value: 3) {
-                SettingsView()
-            }
+            SettingsView()
+                .tabItem {
+                    Label("Ayarlar", systemImage: "gear")
+                }
+                .tag(3)
         }
         .tint(Color.lmPrimary)
         .environment(deepSeekService)

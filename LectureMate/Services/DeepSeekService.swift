@@ -1,7 +1,7 @@
 import Foundation
 
 @Observable
-final class DeepSeekService {
+final class DeepSeekService: @unchecked Sendable {
     var isConfigured: Bool {
         guard let key = apiKey else { return false }
         return !key.isEmpty
@@ -87,8 +87,8 @@ final class DeepSeekService {
     // MARK: - Streaming Soru-Cevap
 
     func askQuestionStreaming(_ question: String, context: String, history: [ChatHistoryItem] = []) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { continuation in
-            Task {
+        AsyncThrowingStream { [self] continuation in
+            Task { @Sendable in
                 do {
                     let truncatedContext = String(context.prefix(10000))
 

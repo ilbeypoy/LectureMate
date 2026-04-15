@@ -15,7 +15,7 @@ struct ChatBubbleView: View {
                     Text(message.isUser ? "Sen" : "AI Asistan")
                         .font(.caption2.bold())
                 }
-                .foregroundStyle(message.isUser ? .lmPrimary : .lmSecondary)
+                .foregroundStyle(message.isUser ? Color.lmPrimary : Color.lmSecondary)
 
                 // Mesaj icerigi
                 Text(message.content)
