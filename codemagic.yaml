@@ -12,13 +12,16 @@ workflows:
       - name: Generate Xcode Project
         script: |
           xcodegen generate
+      - name: List Simulators
+        script: |
+          xcrun simctl list devices available | head -30
       - name: Build iOS App
         script: |
           xcodebuild build \
             -project LectureMate.xcodeproj \
             -scheme LectureMate \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO
     artifacts:

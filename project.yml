@@ -3,14 +3,13 @@ options:
   bundleIdPrefix: com.ilbeypoy
   deploymentTarget:
     iOS: "17.0"
-  xcodeVersion: "15.0"
-
 settings:
   base:
     INFOPLIST_KEY_NSMicrophoneUsageDescription: "Ders kaydı için mikrofon gerekiyor"
     INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Ders transkripti için konuşma tanıma kullanılacak"
     INFOPLIST_KEY_UIBackgroundModes: "audio"
-    SWIFT_VERSION: "5.9"
+    SWIFT_VERSION: "6.0"
+    SUPPORTED_PLATFORMS: "iphonesimulator iphoneos"
 
 targets:
   LectureMate:
