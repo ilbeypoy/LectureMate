@@ -22,7 +22,7 @@ struct SmartRecordingCard: View {
         .padding(20)
         .background(
             LinearGradient(
-                colors: [.lmPrimary.opacity(0.1), .lmSecondary.opacity(0.1)],
+                colors: [Color.lmPrimary.opacity(0.1), Color.lmSecondary.opacity(0.1)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )

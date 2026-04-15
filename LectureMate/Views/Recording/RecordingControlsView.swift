@@ -25,7 +25,7 @@ struct RecordingControlsView: View {
                                 .font(.title)
                                 .foregroundStyle(.white)
                         }
-                        .shadow(color: .lmAccent.opacity(0.4), radius: 10)
+                        .shadow(color: Color.lmAccent.opacity(0.4), radius: 10)
                 }
 
                 Color.clear.frame(width: 50, height: 50)

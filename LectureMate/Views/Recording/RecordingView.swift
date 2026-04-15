@@ -18,7 +18,7 @@ struct RecordingView: View {
             ZStack {
                 // Arka plan gradyani
                 LinearGradient(
-                    colors: [Color(.systemBackground), .lmPrimary.opacity(0.05)],
+                    colors: [Color(.systemBackground), Color.lmPrimary.opacity(0.05)],
                     startPoint: .top,
                     endPoint: .bottom
                 )

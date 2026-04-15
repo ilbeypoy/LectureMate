@@ -5,7 +5,7 @@ struct AIOnboardingView: View {
         VStack(spacing: 12) {
             Image(systemName: "sparkles")
                 .font(.largeTitle)
-                .foregroundStyle(.lmSecondary.opacity(0.6))
+                .foregroundStyle(Color.lmSecondary.opacity(0.6))
 
             Text("AI Ozellikleri")
                 .font(.headline)

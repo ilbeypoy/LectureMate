@@ -28,11 +28,11 @@ struct LiveWaveformView: View {
 
     private func barColor(for height: CGFloat) -> Color {
         if height > 0.7 {
-            return .lmAccent
+            return Color.lmAccent
         } else if height > 0.4 {
-            return .lmPrimary
+            return Color.lmPrimary
         } else {
-            return .lmPrimary.opacity(0.5)
+            return Color.lmPrimary.opacity(0.5)
         }
     }
 

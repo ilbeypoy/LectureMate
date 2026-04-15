@@ -20,7 +20,7 @@ struct AISummaryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             LinearGradient(
-                colors: [.lmSecondary.opacity(0.08), .lmPrimary.opacity(0.05)],
+                colors: [Color.lmSecondary.opacity(0.08), Color.lmPrimary.opacity(0.05)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
