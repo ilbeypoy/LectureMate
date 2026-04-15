@@ -12,24 +12,26 @@ workflows:
       - name: Generate Xcode Project
         script: |
           xcodegen generate
-      - name: Build iOS App
+      - name: Build for Device
         script: |
           set -o pipefail
           xcodebuild build \
             -project LectureMate.xcodeproj \
             -scheme LectureMate \
-            -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -configuration Debug \
             -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM=""
       - name: Create IPA
         script: |
-          cd build/Build/Products/Debug-iphonesimulator
+          APP_PATH=$(find build -name "LectureMate.app" -path "*/Debug-iphoneos/*" | head -1)
+          echo "Found app at: $APP_PATH"
           mkdir -p Payload
-          cp -r LectureMate.app Payload/
-          zip -r /tmp/LectureMate.ipa Payload
-          echo "IPA created at /tmp/LectureMate.ipa"
-          ls -lh /tmp/LectureMate.ipa
+          cp -r "$APP_PATH" Payload/
+          zip -r LectureMate.ipa Payload
+          ls -lh LectureMate.ipa
     artifacts:
-      - /tmp/LectureMate.ipa
+      - LectureMate.ipa
