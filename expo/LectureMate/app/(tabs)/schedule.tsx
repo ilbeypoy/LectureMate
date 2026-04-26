@@ -8,44 +8,47 @@ import {
   TextInput,
   Modal,
   Alert,
-  FlatList,
   Platform,
+  TouchableHighlight,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Colors, ClassColors, DAYS_OF_WEEK } from '../../constants/colors';
+import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
+import { useTheme, Typography, Spacing, Radii, ClassColorsiOS } from '../../constants/theme';
 import {
   getAllClasses,
   getAllScheduleEntries,
   insertClass,
   insertScheduleEntry,
-  deleteClass,
   deleteScheduleEntry,
 } from '../../db/database';
 import { scheduleClassReminders } from '../../services/notifications';
+import { LargeTitleScreen } from '../../components/ui/LargeTitleScreen';
+import { ListSection } from '../../components/ui/ListSection';
+import { ListRow } from '../../components/ui/ListRow';
+import { Button } from '../../components/ui/Button';
 import type { LMClass, LMScheduleEntry } from '../../types';
 import { generateId, formatHourMinute } from '../../utils/format';
 
+const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+const DAY_TO_NUM: Record<string, number> = {
+  monday: 2, tuesday: 3, wednesday: 4, thursday: 5, friday: 6, saturday: 7, sunday: 1,
+};
+
 export default function ScheduleScreen() {
-  const [selectedDay, setSelectedDay] = useState(new Date().getDay() === 0 ? 1 : new Date().getDay() + 1);
+  const { t } = useTranslation();
+  const { colors, isDark } = useTheme();
+
+  const todayDayJs = new Date().getDay();
+  const todayDayNum = todayDayJs === 0 ? 1 : todayDayJs + 1;
+  const [selectedDay, setSelectedDay] = useState(todayDayNum);
+
   const [classes, setClasses] = useState<LMClass[]>([]);
   const [entries, setEntries] = useState<LMScheduleEntry[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [showNewClassForm, setShowNewClassForm] = useState(false);
-
-  // Form state
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [startTime, setStartTime] = useState(new Date(2024, 0, 1, 9, 0));
-  const [endTime, setEndTime] = useState(new Date(2024, 0, 1, 10, 30));
-  const [location, setLocation] = useState('');
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
-
-  const [newClassName, setNewClassName] = useState('');
-  const [newProfessor, setNewProfessor] = useState('');
-  const [newColor, setNewColor] = useState(ClassColors[0]);
 
   const refresh = useCallback(async () => {
     const [c, e] = await Promise.all([getAllClasses(), getAllScheduleEntries()]);
@@ -53,62 +56,18 @@ export default function ScheduleScreen() {
     setEntries(e);
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      refresh();
-    }, [refresh])
-  );
+  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
   const dayEntries = entries
     .filter((e) => e.dayOfWeek === selectedDay)
     .sort((a, b) => a.startHour * 60 + a.startMinute - (b.startHour * 60 + b.startMinute));
 
-  const handleAddClass = async () => {
-    if (!newClassName.trim()) return;
-    const c: LMClass = {
-      id: generateId(),
-      name: newClassName.trim(),
-      professorName: newProfessor.trim() || null,
-      colorHex: newColor,
-      createdAt: Date.now(),
-    };
-    await insertClass(c);
-    setSelectedClassId(c.id);
-    setNewClassName('');
-    setNewProfessor('');
-    setShowNewClassForm(false);
-    await refresh();
-  };
-
-  const handleAddEntry = async () => {
-    if (!selectedClassId) return;
-    const e: LMScheduleEntry = {
-      id: generateId(),
-      classId: selectedClassId,
-      dayOfWeek: selectedDay,
-      startHour: startTime.getHours(),
-      startMinute: startTime.getMinutes(),
-      endHour: endTime.getHours(),
-      endMinute: endTime.getMinutes(),
-      location: location.trim() || null,
-    };
-    await insertScheduleEntry(e);
-    setShowForm(false);
-    setSelectedClassId(null);
-    setLocation('');
-    await refresh();
-
-    // Bildirimleri yenile
-    const allEntries = await getAllScheduleEntries();
-    const allClasses = await getAllClasses();
-    scheduleClassReminders(allEntries, allClasses).catch(() => {});
-  };
-
-  const handleDeleteEntry = (entry: LMScheduleEntry) => {
-    Alert.alert('Sil?', 'Bu ders programi silinecek.', [
-      { text: 'Iptal', style: 'cancel' },
+  const handleDelete = (entry: LMScheduleEntry) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    Alert.alert(t('schedule.deleteEntry'), t('schedule.deleteEntryMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Sil',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           await deleteScheduleEntry(entry.id);
@@ -119,362 +78,467 @@ export default function ScheduleScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Ders Programi</Text>
-        <TouchableOpacity onPress={() => setShowForm(true)} style={styles.addButton}>
-          <Ionicons name="add" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Gun secici */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.daysRow}
-      >
-        {DAYS_OF_WEEK.map((day) => (
-          <TouchableOpacity
-            key={day.id}
-            style={[
-              styles.dayChip,
-              selectedDay === day.id && styles.dayChipActive,
-            ]}
-            onPress={() => setSelectedDay(day.id)}
-          >
-            <Text
-              style={[
-                styles.dayChipText,
-                selectedDay === day.id && styles.dayChipTextActive,
-              ]}
-            >
-              {day.short}
-            </Text>
-            <Text
-              style={[
-                styles.dayChipCount,
-                selectedDay === day.id && styles.dayChipTextActive,
-              ]}
-            >
-              {entries.filter((e) => e.dayOfWeek === day.id).length}
-            </Text>
+    <>
+      <LargeTitleScreen
+        title={t('schedule.title')}
+        rightAction={
+          <TouchableOpacity onPress={() => setShowForm(true)} hitSlop={10}>
+            <Ionicons name="add" size={28} color={colors.systemBlue} />
           </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Program listesi */}
-      <FlatList
-        data={dayEntries}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16 }}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="calendar-outline" size={48} color={Colors.textSecondary} />
-            <Text style={styles.emptyText}>Bu gun ders yok</Text>
-            <Text style={styles.emptyHint}>+ butonuna basarak ders ekle</Text>
-          </View>
         }
-        renderItem={({ item }) => {
-          const cls = classes.find((c) => c.id === item.classId);
-          return (
-            <TouchableOpacity
-              style={styles.entryCard}
-              onLongPress={() => handleDeleteEntry(item)}
-            >
-              <View style={styles.entryTime}>
-                <Text style={styles.entryTimeStart}>
-                  {formatHourMinute(item.startHour, item.startMinute)}
-                </Text>
-                <Text style={styles.entryTimeEnd}>
-                  {formatHourMinute(item.endHour, item.endMinute)}
-                </Text>
-              </View>
-              {cls && (
-                <View style={[styles.entryColorBar, { backgroundColor: cls.colorHex }]} />
-              )}
-              <View style={styles.entryContent}>
-                <Text style={styles.entryClassName}>{cls?.name ?? 'Ders'}</Text>
-                {cls?.professorName && (
-                  <Text style={styles.entryProfessor}>{cls.professorName}</Text>
-                )}
-                {item.location && (
-                  <View style={styles.entryLocation}>
-                    <Ionicons name="location-outline" size={12} color={Colors.textSecondary} />
-                    <Text style={styles.entryLocationText}>{item.location}</Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-          );
-        }}
-      />
-
-      {/* Form Modal */}
-      <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowForm(false)}>
-              <Text style={{ color: Colors.primary, fontSize: 16 }}>Iptal</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Ders Ekle</Text>
-            <TouchableOpacity
-              onPress={handleAddEntry}
-              disabled={!selectedClassId}
-            >
-              <Text
-                style={{
-                  color: selectedClassId ? Colors.primary : Colors.textSecondary,
-                  fontSize: 16,
-                  fontWeight: '600',
-                }}
-              >
-                Kaydet
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }}>
-            {/* Ders secici */}
-            <View>
-              <Text style={styles.formLabel}>Ders</Text>
-              {classes.map((c) => (
+        searchBar={
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.daysRow}
+          >
+            {DAY_KEYS.map((dayKey) => {
+              const num = DAY_TO_NUM[dayKey];
+              const count = entries.filter((e) => e.dayOfWeek === num).length;
+              const isSelected = selectedDay === num;
+              return (
                 <TouchableOpacity
-                  key={c.id}
+                  key={dayKey}
+                  onPress={() => {
+                    Haptics.selectionAsync().catch(() => {});
+                    setSelectedDay(num);
+                  }}
                   style={[
-                    styles.classOption,
-                    selectedClassId === c.id && styles.classOptionActive,
+                    styles.dayChip,
+                    {
+                      backgroundColor: isSelected ? colors.systemBlue : colors.secondarySystemGroupedBackground,
+                    },
                   ]}
-                  onPress={() => setSelectedClassId(c.id)}
                 >
-                  <View style={[styles.colorDot, { backgroundColor: c.colorHex }]} />
-                  <Text style={styles.classOptionText}>{c.name}</Text>
-                  {selectedClassId === c.id && (
-                    <Ionicons name="checkmark" size={20} color={Colors.primary} />
+                  <Text
+                    style={[
+                      styles.dayChipText,
+                      { color: isSelected ? '#FFFFFF' : colors.label },
+                    ]}
+                  >
+                    {t(`schedule.daysShort.${dayKey}`)}
+                  </Text>
+                  {count > 0 && (
+                    <View
+                      style={[
+                        styles.dayChipBadge,
+                        {
+                          backgroundColor: isSelected
+                            ? 'rgba(255,255,255,0.25)'
+                            : colors.systemBlue + '22',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dayChipBadgeText,
+                          { color: isSelected ? '#FFFFFF' : colors.systemBlue },
+                        ]}
+                      >
+                        {count}
+                      </Text>
+                    </View>
                   )}
                 </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={styles.addClassButton}
-                onPress={() => setShowNewClassForm(!showNewClassForm)}
-              >
-                <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
-                <Text style={{ color: Colors.primary }}>Yeni Ders Ekle</Text>
-              </TouchableOpacity>
-
-              {showNewClassForm && (
-                <View style={styles.newClassForm}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ders Adi"
-                    value={newClassName}
-                    onChangeText={setNewClassName}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Hoca Adi (istege bagli)"
-                    value={newProfessor}
-                    onChangeText={setNewProfessor}
-                  />
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 8 }}>
-                      {ClassColors.map((color) => (
-                        <TouchableOpacity
-                          key={color}
-                          style={[
-                            styles.colorPicker,
-                            { backgroundColor: color },
-                            newColor === color && styles.colorPickerActive,
-                          ]}
-                          onPress={() => setNewColor(color)}
-                        />
-                      ))}
+              );
+            })}
+          </ScrollView>
+        }
+      >
+        {dayEntries.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="calendar-outline" size={56} color={colors.tertiaryLabel} />
+            <Text style={[styles.emptyTitle, { color: colors.label }]}>
+              {t('schedule.empty')}
+            </Text>
+            <Text style={[styles.emptyHint, { color: colors.secondaryLabel }]}>
+              {t('schedule.emptyHint')}
+            </Text>
+          </View>
+        ) : (
+          <ListSection>
+            {dayEntries.map((entry) => {
+              const cls = classes.find((c) => c.id === entry.classId);
+              return (
+                <TouchableHighlight
+                  key={entry.id}
+                  underlayColor={colors.systemFill}
+                  onLongPress={() => handleDelete(entry)}
+                >
+                  <View style={[styles.scheduleRow, { backgroundColor: colors.secondarySystemGroupedBackground }]}>
+                    <View style={styles.timeCol}>
+                      <Text style={[styles.timeStart, { color: colors.label }]}>
+                        {formatHourMinute(entry.startHour, entry.startMinute)}
+                      </Text>
+                      <Text style={[styles.timeEnd, { color: colors.secondaryLabel }]}>
+                        {formatHourMinute(entry.endHour, entry.endMinute)}
+                      </Text>
                     </View>
-                  </ScrollView>
-                  <TouchableOpacity
-                    style={[
-                      styles.primaryButton,
-                      !newClassName.trim() && { opacity: 0.5 },
-                    ]}
-                    onPress={handleAddClass}
-                    disabled={!newClassName.trim()}
-                  >
-                    <Text style={styles.primaryButtonText}>Dersi Olustur</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
 
-            {/* Saat */}
-            <View>
-              <Text style={styles.formLabel}>Saat</Text>
-              <TouchableOpacity
-                style={styles.timeRow}
-                onPress={() => setShowStartPicker(true)}
-              >
-                <Text style={styles.timeLabel}>Baslangic</Text>
-                <Text style={styles.timeValue}>
-                  {formatHourMinute(startTime.getHours(), startTime.getMinutes())}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.timeRow}
-                onPress={() => setShowEndPicker(true)}
-              >
-                <Text style={styles.timeLabel}>Bitis</Text>
-                <Text style={styles.timeValue}>
-                  {formatHourMinute(endTime.getHours(), endTime.getMinutes())}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                    <View style={[styles.timeline, { backgroundColor: cls?.colorHex ?? colors.systemGray }]} />
 
-            {/* Konum */}
-            <View>
-              <Text style={styles.formLabel}>Konum (istege bagli)</Text>
+                    <View style={styles.contentCol}>
+                      <Text style={[styles.classNameText, { color: colors.label }]}>
+                        {cls?.name ?? '?'}
+                      </Text>
+                      {cls?.professorName && (
+                        <Text style={[styles.professorText, { color: colors.secondaryLabel }]}>
+                          {cls.professorName}
+                        </Text>
+                      )}
+                      {entry.location && (
+                        <View style={styles.locationRow}>
+                          <Ionicons name="location-outline" size={11} color={colors.tertiaryLabel} />
+                          <Text style={[styles.locationText, { color: colors.tertiaryLabel }]}>
+                            {entry.location}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </TouchableHighlight>
+              );
+            })}
+          </ListSection>
+        )}
+      </LargeTitleScreen>
+
+      <ScheduleForm
+        visible={showForm}
+        onClose={() => setShowForm(false)}
+        onSaved={async () => {
+          setShowForm(false);
+          await refresh();
+          const [allEntries, allClasses] = await Promise.all([
+            getAllScheduleEntries(),
+            getAllClasses(),
+          ]);
+          scheduleClassReminders(allEntries, allClasses).catch(() => {});
+        }}
+        defaultDay={selectedDay}
+        classes={classes}
+      />
+    </>
+  );
+}
+
+function ScheduleForm({
+  visible,
+  onClose,
+  onSaved,
+  defaultDay,
+  classes,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  defaultDay: number;
+  classes: LMClass[];
+}) {
+  const { t } = useTranslation();
+  const { colors, isDark } = useTheme();
+
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [day, setDay] = useState(defaultDay);
+  const [startTime, setStartTime] = useState(new Date(2024, 0, 1, 9, 0));
+  const [endTime, setEndTime] = useState(new Date(2024, 0, 1, 10, 30));
+  const [location, setLocation] = useState('');
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+  // Yeni ders formu
+  const [showNewClass, setShowNewClass] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newProf, setNewProf] = useState('');
+  const [newColor, setNewColor] = useState(ClassColorsiOS[0]);
+
+  const handleAddClass = async () => {
+    if (!newName.trim()) return;
+    const c: LMClass = {
+      id: generateId(),
+      name: newName.trim(),
+      professorName: newProf.trim() || null,
+      colorHex: newColor,
+      createdAt: Date.now(),
+    };
+    await insertClass(c);
+    setSelectedClassId(c.id);
+    setNewName('');
+    setNewProf('');
+    setShowNewClass(false);
+    classes.push(c);
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedClassId) return;
+    const e: LMScheduleEntry = {
+      id: generateId(),
+      classId: selectedClassId,
+      dayOfWeek: day,
+      startHour: startTime.getHours(),
+      startMinute: startTime.getMinutes(),
+      endHour: endTime.getHours(),
+      endMinute: endTime.getMinutes(),
+      location: location.trim() || null,
+    };
+    await insertScheduleEntry(e);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    onSaved();
+    setSelectedClassId(null);
+    setLocation('');
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.systemGroupedBackground }}>
+        <View style={[styles.modalHeader, { borderBottomColor: colors.separator }]}>
+          <TouchableOpacity onPress={onClose}>
+            <Text style={{ color: colors.systemBlue, ...Typography.body }}>
+              {t('common.cancel')}
+            </Text>
+          </TouchableOpacity>
+          <Text style={[Typography.headline, { color: colors.label }]}>
+            {t('schedule.addClass')}
+          </Text>
+          <TouchableOpacity onPress={handleSubmit} disabled={!selectedClassId}>
+            <Text
+              style={{
+                color: selectedClassId ? colors.systemBlue : colors.tertiaryLabel,
+                ...Typography.body,
+                fontWeight: '600',
+              }}
+            >
+              {t('common.save')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView contentContainerStyle={{ paddingVertical: Spacing.base }}>
+          {/* Ders secimi */}
+          <ListSection header={t('schedule.selectClass')}>
+            {classes.map((c) => (
+              <ListRow
+                key={c.id}
+                title={c.name}
+                onPress={() => setSelectedClassId(c.id)}
+                rightElement={
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={[styles.colorDot, { backgroundColor: c.colorHex }]} />
+                    {selectedClassId === c.id && (
+                      <Ionicons name="checkmark" size={20} color={colors.systemBlue} />
+                    )}
+                  </View>
+                }
+              />
+            ))}
+            <ListRow
+              title={t('schedule.addNewClass')}
+              icon="add-circle-outline"
+              iconBackground={colors.systemBlue}
+              titleStyle={{ color: colors.systemBlue }}
+              onPress={() => setShowNewClass(!showNewClass)}
+            />
+          </ListSection>
+
+          {/* Yeni ders formu */}
+          {showNewClass && (
+            <ListSection header={t('schedule.newClass')}>
+              <View style={[styles.inputContainer, { backgroundColor: colors.secondarySystemGroupedBackground }]}>
+                <TextInput
+                  placeholder={t('schedule.className')}
+                  placeholderTextColor={colors.tertiaryLabel}
+                  value={newName}
+                  onChangeText={setNewName}
+                  style={[styles.input, { color: colors.label }]}
+                />
+              </View>
+              <View style={[styles.inputContainer, { backgroundColor: colors.secondarySystemGroupedBackground }]}>
+                <TextInput
+                  placeholder={t('schedule.professor')}
+                  placeholderTextColor={colors.tertiaryLabel}
+                  value={newProf}
+                  onChangeText={setNewProf}
+                  style={[styles.input, { color: colors.label }]}
+                />
+              </View>
+              <View style={[styles.colorPickerRow, { backgroundColor: colors.secondarySystemGroupedBackground }]}>
+                <Text style={[Typography.body, { color: colors.label }]}>{t('schedule.color')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 8, paddingLeft: 12 }}>
+                    {ClassColorsiOS.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        onPress={() => setNewColor(c)}
+                        style={[
+                          styles.colorPick,
+                          { backgroundColor: c, borderWidth: newColor === c ? 3 : 0, borderColor: colors.label },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+              <View style={{ padding: Spacing.base }}>
+                <Button
+                  title={t('schedule.createClass')}
+                  onPress={handleAddClass}
+                  disabled={!newName.trim()}
+                />
+              </View>
+            </ListSection>
+          )}
+
+          {/* Saat */}
+          <ListSection header={t('schedule.time')}>
+            <ListRow
+              title={t('schedule.startTime')}
+              detail={formatHourMinute(startTime.getHours(), startTime.getMinutes())}
+              onPress={() => setShowStartPicker(true)}
+            />
+            <ListRow
+              title={t('schedule.endTime')}
+              detail={formatHourMinute(endTime.getHours(), endTime.getMinutes())}
+              onPress={() => setShowEndPicker(true)}
+            />
+          </ListSection>
+
+          {/* Konum */}
+          <ListSection header={t('schedule.location')}>
+            <View style={[styles.inputContainer, { backgroundColor: colors.secondarySystemGroupedBackground }]}>
               <TextInput
-                style={styles.input}
-                placeholder="Ornek: A Blok 204"
+                placeholder={t('schedule.locationPlaceholder')}
+                placeholderTextColor={colors.tertiaryLabel}
                 value={location}
                 onChangeText={setLocation}
+                style={[styles.input, { color: colors.label }]}
               />
             </View>
+          </ListSection>
 
-            {showStartPicker && (
-              <DateTimePicker
-                value={startTime}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(_, date) => {
-                  setShowStartPicker(Platform.OS === 'ios');
-                  if (date) setStartTime(date);
-                }}
-              />
-            )}
-            {showEndPicker && (
-              <DateTimePicker
-                value={endTime}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(_, date) => {
-                  setShowEndPicker(Platform.OS === 'ios');
-                  if (date) setEndTime(date);
-                }}
-              />
-            )}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-    </SafeAreaView>
+          {showStartPicker && (
+            <DateTimePicker
+              value={startTime}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(_, date) => {
+                setShowStartPicker(Platform.OS === 'ios');
+                if (date) setStartTime(date);
+              }}
+              themeVariant={isDark ? 'dark' : 'light'}
+            />
+          )}
+          {showEndPicker && (
+            <DateTimePicker
+              value={endTime}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(_, date) => {
+                setShowEndPicker(Platform.OS === 'ios');
+                if (date) setEndTime(date);
+              }}
+              themeVariant={isDark ? 'dark' : 'light'}
+            />
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
+  daysRow: {
+    paddingHorizontal: Spacing.base,
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
   },
-  title: { fontSize: 28, fontWeight: '700', color: Colors.textPrimary },
-  addButton: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  daysRow: { gap: 8, paddingHorizontal: 16, paddingBottom: 16 },
   dayChip: {
-    width: 50, height: 60, borderRadius: 12,
-    backgroundColor: Colors.cardBackground,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: Radii.full,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 56,
+    justifyContent: 'center',
+  },
+  dayChipText: { ...Typography.subheadline, fontWeight: '600' },
+  dayChipBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    paddingHorizontal: 4,
   },
-  dayChipActive: { backgroundColor: Colors.primary },
-  dayChipText: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary },
-  dayChipTextActive: { color: 'white' },
-  dayChipCount: { fontSize: 11, color: Colors.textSecondary },
-  empty: { alignItems: 'center', padding: 40, gap: 8 },
-  emptyText: { fontSize: 16, fontWeight: '600', color: Colors.textSecondary },
-  emptyHint: { fontSize: 13, color: Colors.textSecondary },
-  entryCard: {
+  dayChipBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  scheduleRow: {
     flexDirection: 'row',
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    marginBottom: 8,
-    overflow: 'hidden',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.base,
+    paddingVertical: 12,
+    minHeight: 64,
   },
-  entryTime: { padding: 12, alignItems: 'center', justifyContent: 'center', width: 70 },
-  entryTimeStart: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  entryTimeEnd: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
-  entryColorBar: { width: 4 },
-  entryContent: { flex: 1, padding: 12, gap: 4 },
-  entryClassName: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-  entryProfessor: { fontSize: 12, color: Colors.textSecondary },
-  entryLocation: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  entryLocationText: { fontSize: 11, color: Colors.textSecondary },
+  timeCol: {
+    width: 56,
+    alignItems: 'center',
+  },
+  timeStart: { ...Typography.headline, fontVariant: ['tabular-nums'] },
+  timeEnd: { ...Typography.caption1, fontVariant: ['tabular-nums'], marginTop: 2 },
+  timeline: {
+    width: 3,
+    alignSelf: 'stretch',
+    borderRadius: 1.5,
+    marginHorizontal: Spacing.md,
+  },
+  contentCol: { flex: 1, gap: 2 },
+  classNameText: { ...Typography.body, fontWeight: '600' },
+  professorText: { ...Typography.footnote },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  locationText: { ...Typography.caption1 },
+
+  empty: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xxl * 2,
+    gap: Spacing.sm,
+  },
+  emptyTitle: { ...Typography.title3 },
+  emptyHint: { ...Typography.subheadline, textAlign: 'center' },
+
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  modalTitle: { fontSize: 17, fontWeight: '600', color: Colors.textPrimary },
-  formLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 8 },
-  classOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: Colors.cardBackground,
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 6,
-  },
-  classOptionActive: { backgroundColor: `${Colors.primary}15`, borderWidth: 1, borderColor: Colors.primary },
-  classOptionText: { flex: 1, fontSize: 15, color: Colors.textPrimary },
-  colorDot: { width: 12, height: 12, borderRadius: 6 },
-  addClassButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    padding: 12,
+  inputContainer: {
+    paddingHorizontal: Spacing.base,
+    paddingVertical: 11,
+    minHeight: 44,
     justifyContent: 'center',
   },
-  newClassForm: {
-    backgroundColor: Colors.cardBackground,
-    padding: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
   input: {
-    backgroundColor: Colors.background,
-    padding: 12,
-    borderRadius: 8,
-    fontSize: 15,
-    color: Colors.textPrimary,
+    ...Typography.body,
   },
-  colorPicker: {
-    width: 32, height: 32, borderRadius: 16,
-  },
-  colorPickerActive: { borderWidth: 3, borderColor: Colors.textPrimary },
-  primaryButton: {
-    backgroundColor: Colors.primary,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  primaryButtonText: { color: 'white', fontWeight: '600' },
-  timeRow: {
+  colorPickerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 6,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.md,
+    minHeight: 56,
   },
-  timeLabel: { fontSize: 15, color: Colors.textPrimary },
-  timeValue: { fontSize: 15, color: Colors.primary, fontWeight: '600' },
+  colorPick: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  colorDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
 });

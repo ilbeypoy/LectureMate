@@ -3,43 +3,47 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
-  FlatList,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors } from '../../constants/colors';
+import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
+import * as FileSystem from 'expo-file-system/legacy';
+import { useTheme, Typography, Spacing, Radii } from '../../constants/theme';
 import {
   getAllRecordings,
   getAllClasses,
   searchRecordings,
   deleteRecording,
 } from '../../db/database';
-import * as FileSystem from 'expo-file-system/legacy';
+import { LargeTitleScreen } from '../../components/ui/LargeTitleScreen';
+import { ListSection } from '../../components/ui/ListSection';
+import { SearchField } from '../../components/ui/SearchField';
 import type { LMRecording, LMClass } from '../../types';
 import { formatDuration, formatRelativeDate } from '../../utils/format';
 
 export default function LibraryScreen() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
   const router = useRouter();
   const [recordings, setRecordings] = useState<LMRecording[]>([]);
   const [classes, setClasses] = useState<LMClass[]>([]);
   const [searchText, setSearchText] = useState('');
   const [filterClassId, setFilterClassId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
+    setRefreshing(true);
     const [rec, cls] = await Promise.all([getAllRecordings(), getAllClasses()]);
     setRecordings(rec);
     setClasses(cls);
+    setRefreshing(false);
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      refresh();
-    }, [refresh])
-  );
+  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
   const handleSearch = async (text: string) => {
     setSearchText(text);
@@ -57,10 +61,11 @@ export default function LibraryScreen() {
     : recordings;
 
   const handleDelete = (rec: LMRecording) => {
-    Alert.alert('Kaydi Sil', `"${rec.title}" silinecek.`, [
-      { text: 'Iptal', style: 'cancel' },
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    Alert.alert(t('library.deleteTitle'), t('library.deleteMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Sil',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           await FileSystem.deleteAsync(rec.fileUri, { idempotent: true });
@@ -72,152 +77,228 @@ export default function LibraryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Kutuphane</Text>
-        <View style={styles.searchBox}>
-          <Ionicons name="search" size={18} color={Colors.textSecondary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Kayitlarda ara..."
-            placeholderTextColor={Colors.textSecondary}
+    <LargeTitleScreen
+      title={t('library.title')}
+      onRefresh={refresh}
+      refreshing={refreshing}
+      searchBar={
+        <View>
+          <SearchField
             value={searchText}
             onChangeText={handleSearch}
+            placeholder={t('library.searchPlaceholder')}
           />
-        </View>
-
-        {classes.length > 0 && (
-          <FlatList
-            horizontal
-            data={[{ id: null, name: 'Tumu', colorHex: Colors.textSecondary } as any, ...classes]}
-            keyExtractor={(item) => item.id ?? 'all'}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterRow}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.filterChip,
-                  filterClassId === item.id && styles.filterChipActive,
-                ]}
-                onPress={() => setFilterClassId(item.id)}
-              >
-                {item.id && (
-                  <View style={[styles.classDot, { backgroundColor: item.colorHex }]} />
-                )}
-                <Text style={styles.filterChipText}>{item.name}</Text>
-              </TouchableOpacity>
-            )}
-          />
-        )}
-      </View>
-
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16 }}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="mic-off" size={48} color={Colors.textSecondary} />
-            <Text style={styles.emptyTitle}>Kayit Bulunamadi</Text>
-            <Text style={styles.emptyText}>
-              {searchText ? 'Aramanizla eslesen kayit yok' : 'Ilk kaydinizi yapmak icin Ana Sayfa\'ya gidin'}
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const cls = classes.find((c) => c.id === item.classId);
-          return (
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => router.push(`/library/${item.id}`)}
-              onLongPress={() => handleDelete(item)}
+          {classes.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterRow}
             >
-              <View
-                style={[
-                  styles.colorBar,
-                  { backgroundColor: cls?.colorHex ?? Colors.border },
-                ]}
+              <FilterChip
+                label={t('library.all')}
+                active={filterClassId === null}
+                onPress={() => setFilterClassId(null)}
               />
-              <View style={styles.cardContent}>
-                <Text style={styles.cardTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <View style={styles.cardMeta}>
-                  {cls && (
-                    <Text style={[styles.cardClass, { color: Colors.primary }]}>
-                      {cls.name}
-                    </Text>
-                  )}
-                  <Text style={styles.cardDate}>{formatRelativeDate(item.recordedAt)}</Text>
-                </View>
-                <View style={styles.cardBadges}>
-                  <Badge icon="time" text={formatDuration(item.duration)} />
-                  {item.isTranscribed && <Badge icon="document-text" text="Transkript" color={Colors.success} />}
-                  {item.aiSummary && <Badge icon="sparkles" text="AI" color={Colors.secondary} />}
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        }}
-      />
-    </SafeAreaView>
+              {classes.map((c) => (
+                <FilterChip
+                  key={c.id}
+                  label={c.name}
+                  color={c.colorHex}
+                  active={filterClassId === c.id}
+                  onPress={() => setFilterClassId(c.id)}
+                />
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      }
+    >
+      {filtered.length === 0 ? (
+        <View style={styles.empty}>
+          <Ionicons name="mic-off" size={56} color={colors.tertiaryLabel} />
+          <Text style={[styles.emptyTitle, { color: colors.label }]}>
+            {t('library.empty')}
+          </Text>
+          <Text style={[styles.emptyHint, { color: colors.secondaryLabel }]}>
+            {searchText ? t('library.noResults') : t('library.emptyHint')}
+          </Text>
+        </View>
+      ) : (
+        <ListSection>
+          {filtered.map((item) => {
+            const cls = classes.find((c) => c.id === item.classId);
+            return (
+              <RecordingRow
+                key={item.id}
+                recording={item}
+                cls={cls}
+                onPress={() => router.push(`/library/${item.id}`)}
+                onLongPress={() => handleDelete(item)}
+              />
+            );
+          })}
+        </ListSection>
+      )}
+    </LargeTitleScreen>
   );
 }
 
-function Badge({ icon, text, color }: { icon: any; text: string; color?: string }) {
+function FilterChip({
+  label,
+  color,
+  active,
+  onPress,
+}: {
+  label: string;
+  color?: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
   return (
-    <View style={styles.badge}>
-      <Ionicons name={icon} size={11} color={color ?? Colors.textSecondary} />
-      <Text style={[styles.badgeText, color && { color }]}>{text}</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <View
+        style={[
+          styles.chip,
+          {
+            backgroundColor: active ? colors.systemBlue : colors.tertiarySystemFill,
+          },
+        ]}
+      >
+        {color && (
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color }} />
+        )}
+        <Text
+          style={[
+            styles.chipText,
+            { color: active ? '#FFFFFF' : colors.label },
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function RecordingRow({
+  recording,
+  cls,
+  onPress,
+  onLongPress,
+}: {
+  recording: LMRecording;
+  cls?: LMClass;
+  onPress: () => void;
+  onLongPress: () => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <TouchableOpacity
+      activeOpacity={0.6}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      style={[styles.row, { backgroundColor: colors.secondarySystemGroupedBackground }]}
+    >
+      <View style={[styles.rowIcon, { backgroundColor: (cls?.colorHex ?? colors.systemGray) + '22' }]}>
+        <Ionicons
+          name="mic"
+          size={20}
+          color={cls?.colorHex ?? colors.systemGray}
+        />
+      </View>
+
+      <View style={styles.rowContent}>
+        <Text style={[styles.rowTitle, { color: colors.label }]} numberOfLines={1}>
+          {recording.title}
+        </Text>
+        <View style={styles.rowMeta}>
+          {cls && (
+            <Text style={[styles.rowMetaText, { color: cls.colorHex }]}>
+              {cls.name}
+            </Text>
+          )}
+          <Text style={[styles.rowMetaText, { color: colors.secondaryLabel }]}>
+            {formatRelativeDate(recording.recordedAt)} • {formatDuration(recording.duration)}
+          </Text>
+        </View>
+        <View style={styles.rowBadges}>
+          {recording.isTranscribed && (
+            <Badge icon="document-text" color={colors.systemGreen} />
+          )}
+          {recording.aiSummary && (
+            <Badge icon="sparkles" color={colors.systemPurple} />
+          )}
+        </View>
+      </View>
+
+      <Ionicons name="chevron-forward" size={16} color={colors.tertiaryLabel} />
+    </TouchableOpacity>
+  );
+}
+
+function Badge({ icon, color }: { icon: any; color: string }) {
+  return (
+    <View style={[styles.badge, { backgroundColor: color + '24' }]}>
+      <Ionicons name={icon} size={10} color={color} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: { padding: 16, gap: 12 },
-  title: { fontSize: 28, fontWeight: '700', color: Colors.textPrimary },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.cardBackground,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+  filterRow: {
+    paddingHorizontal: Spacing.base,
+    gap: Spacing.sm,
+    paddingVertical: 4,
   },
-  searchInput: { flex: 1, fontSize: 15, color: Colors.textPrimary },
-  filterRow: { gap: 8, paddingVertical: 4 },
-  filterChip: {
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: Colors.cardBackground,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: Radii.full,
   },
-  filterChipActive: { backgroundColor: `${Colors.primary}20` },
-  filterChipText: { fontSize: 12, color: Colors.textPrimary },
-  classDot: { width: 8, height: 8, borderRadius: 4 },
-  card: {
+  chipText: {
+    ...Typography.subheadline,
+    fontWeight: '500',
+  },
+  empty: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xxl * 2,
+    gap: Spacing.sm,
+  },
+  emptyTitle: { ...Typography.title3 },
+  emptyHint: {
+    ...Typography.subheadline,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
+  row: {
     flexDirection: 'row',
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    marginBottom: 8,
-    gap: 12,
-    overflow: 'hidden',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: Spacing.base,
+    gap: Spacing.md,
+    minHeight: 60,
   },
-  colorBar: { width: 4 },
-  cardContent: { flex: 1, padding: 12 },
-  cardTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-  cardMeta: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  cardClass: { fontSize: 12, fontWeight: '500' },
-  cardDate: { fontSize: 12, color: Colors.textSecondary },
-  cardBadges: { flexDirection: 'row', gap: 12, marginTop: 6 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  badgeText: { fontSize: 11, color: Colors.textSecondary },
-  empty: { alignItems: 'center', padding: 40, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: Colors.textSecondary },
-  emptyText: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' },
+  rowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowContent: { flex: 1, gap: 2 },
+  rowTitle: { ...Typography.body, fontWeight: '500' },
+  rowMeta: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  rowMetaText: { ...Typography.footnote },
+  rowBadges: { flexDirection: 'row', gap: 4, marginTop: 2 },
+  badge: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

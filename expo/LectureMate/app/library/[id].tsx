@@ -6,11 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  TouchableHighlight,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
-import { Colors } from '../../constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
+import { useTheme, Typography, Spacing, Radii } from '../../constants/theme';
 import {
   getRecordingById,
   getSegmentsForRecording,
@@ -23,10 +27,14 @@ import { useTTS } from '../../hooks/useTTS';
 import { DeepSeekService } from '../../services/deepseek';
 import { exportAsText, exportAsPDF } from '../../services/export';
 import { formatTime, formatDate, formatDuration } from '../../utils/format';
+import { ListSection } from '../../components/ui/ListSection';
+import { Button } from '../../components/ui/Button';
 import type { LMRecording, LMTranscriptSegment, LMBookmark, LMClass } from '../../types';
 
 export default function RecordingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { t } = useTranslation();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const player = useAudioPlayer();
   const tts = useTTS();
@@ -36,7 +44,7 @@ export default function RecordingDetailScreen() {
   const [cls, setCls] = useState<LMClass | null>(null);
   const [hasAI, setHasAI] = useState(false);
   const [generatingSummary, setGeneratingSummary] = useState(false);
-  const [showRateMenu, setShowRateMenu] = useState(false);
+  const [showRateSheet, setShowRateSheet] = useState(false);
 
   useEffect(() => {
     load();
@@ -65,6 +73,7 @@ export default function RecordingDetailScreen() {
   };
 
   const handleSeekTo = async (time: number) => {
+    Haptics.selectionAsync().catch(() => {});
     await player.seek(time);
     if (!player.isPlaying) await player.play();
   };
@@ -77,18 +86,19 @@ export default function RecordingDetailScreen() {
       const summary = await DeepSeekService.generateSummary(fullTranscript);
       await updateRecording(recording.id, { aiSummary: summary });
       setRecording({ ...recording, aiSummary: summary });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     } catch (e: any) {
-      Alert.alert('Hata', e.message);
+      Alert.alert(t('common.error'), e.message);
     }
     setGeneratingSummary(false);
   };
 
   const handleExport = () => {
     if (!recording) return;
-    Alert.alert('Disa Aktar', 'Format sec', [
-      { text: 'PDF', onPress: () => exportAsPDF(recording, segments, cls) },
-      { text: 'Metin (.txt)', onPress: () => exportAsText(recording, segments, cls) },
-      { text: 'Iptal', style: 'cancel' },
+    Alert.alert(t('detail.export'), t('detail.exportFormat'), [
+      { text: t('detail.exportPdf'), onPress: () => exportAsPDF(recording, segments, cls) },
+      { text: t('detail.exportText'), onPress: () => exportAsText(recording, segments, cls) },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -104,109 +114,139 @@ export default function RecordingDetailScreen() {
 
   if (!recording) {
     return (
-      <View style={styles.center}>
-        <Text style={{ color: Colors.textSecondary }}>Yukleniyor...</Text>
+      <View style={[styles.center, { backgroundColor: colors.systemGroupedBackground }]}>
+        <Text style={{ color: colors.secondaryLabel }}>{t('common.loading')}</Text>
       </View>
     );
   }
 
-  const fullTranscript = segments.map((s) => s.text).join(' ');
-
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.systemGroupedBackground }]}
+      contentInsetAdjustmentBehavior="automatic"
+    >
       <Stack.Screen
         options={{
           title: recording.title,
           headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flexDirection: 'row', gap: Spacing.base }}>
               {hasAI && (
                 <TouchableOpacity onPress={() => router.push(`/chat/${id}`)}>
-                  <Ionicons name="chatbubbles" size={22} color={Colors.primary} />
+                  <Ionicons name="sparkles" size={20} color={colors.systemBlue} />
                 </TouchableOpacity>
               )}
               <TouchableOpacity onPress={handleExport}>
-                <Ionicons name="share-outline" size={22} color={Colors.primary} />
+                <Ionicons name="share-outline" size={22} color={colors.systemBlue} />
               </TouchableOpacity>
             </View>
           ),
         }}
       />
 
-      {/* Meta */}
-      <View style={styles.metaCard}>
+      {/* Hero header */}
+      <LinearGradient
+        colors={cls ? [cls.colorHex + 'CC', cls.colorHex + '66'] : [colors.systemBlue + 'AA', colors.systemPurple + '66']}
+        style={styles.hero}
+      >
+        <Text style={styles.heroTitle} numberOfLines={3}>
+          {recording.title}
+        </Text>
         {cls && (
-          <View style={styles.metaRow}>
-            <View style={[styles.dot, { backgroundColor: cls.colorHex }]} />
-            <Text style={[styles.metaClass, { color: Colors.primary }]}>{cls.name}</Text>
+          <View style={styles.heroMetaRow}>
+            <View style={styles.heroDot} />
+            <Text style={styles.heroMeta}>{cls.name}</Text>
           </View>
         )}
-        <View style={styles.metaRow}>
-          <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
-          <Text style={styles.metaText}>{formatDate(recording.recordedAt)}</Text>
-          <Ionicons name="time-outline" size={14} color={Colors.textSecondary} style={{ marginLeft: 12 }} />
-          <Text style={styles.metaText}>{formatDuration(recording.duration)}</Text>
+        <View style={styles.heroMetaRow}>
+          <Ionicons name="calendar-outline" size={13} color="rgba(255,255,255,0.85)" />
+          <Text style={styles.heroMeta}>{formatDate(recording.recordedAt)}</Text>
+          <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.85)" style={{ marginLeft: 12 }} />
+          <Text style={styles.heroMeta}>{formatDuration(recording.duration)}</Text>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Player */}
-      <View style={styles.playerCard}>
+      <View style={[styles.player, { backgroundColor: colors.secondarySystemGroupedBackground }]}>
         <Slider
           style={{ width: '100%', height: 30 }}
           minimumValue={0}
           maximumValue={Math.max(player.duration, 1)}
           value={player.position}
-          minimumTrackTintColor={Colors.primary}
-          maximumTrackTintColor={Colors.border}
-          thumbTintColor={Colors.primary}
+          minimumTrackTintColor={colors.systemBlue}
+          maximumTrackTintColor={colors.systemGray4}
+          thumbTintColor={colors.systemBlue}
           onSlidingComplete={(v) => player.seek(v)}
         />
         <View style={styles.playerTime}>
-          <Text style={styles.playerTimeText}>{formatTime(player.position)}</Text>
-          <Text style={styles.playerTimeText}>{formatTime(player.duration)}</Text>
+          <Text style={[styles.playerTimeText, { color: colors.secondaryLabel }]}>
+            {formatTime(player.position)}
+          </Text>
+          <Text style={[styles.playerTimeText, { color: colors.secondaryLabel }]}>
+            -{formatTime(Math.max(0, player.duration - player.position))}
+          </Text>
         </View>
 
         <View style={styles.playerControls}>
-          <TouchableOpacity onPress={() => setShowRateMenu(!showRateMenu)} style={styles.rateButton}>
-            <Text style={styles.rateText}>{player.rate}x</Text>
+          <TouchableOpacity onPress={() => setShowRateSheet(!showRateSheet)}>
+            <View style={[styles.rateChip, { backgroundColor: colors.tertiarySystemFill }]}>
+              <Text style={[styles.rateChipText, { color: colors.label }]}>{player.rate}×</Text>
+            </View>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => player.skip(-15)}>
-            <Ionicons name="play-back" size={28} color={Colors.textPrimary} />
+          <TouchableOpacity onPress={() => player.skip(-15)} hitSlop={10}>
+            <Ionicons name="play-back" size={28} color={colors.label} />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={player.togglePlayPause}>
-            <Ionicons
-              name={player.isPlaying ? 'pause-circle' : 'play-circle'}
-              size={56}
-              color={Colors.primary}
-            />
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              player.togglePlayPause();
+            }}
+          >
+            <View style={[styles.playButton, { backgroundColor: colors.systemBlue }]}>
+              <Ionicons name={player.isPlaying ? 'pause' : 'play'} size={28} color="white" />
+            </View>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => player.skip(15)}>
-            <Ionicons name="play-forward" size={28} color={Colors.textPrimary} />
+          <TouchableOpacity onPress={() => player.skip(15)} hitSlop={10}>
+            <Ionicons name="play-forward" size={28} color={colors.label} />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleReadAloud}>
+          <TouchableOpacity onPress={handleReadAloud} hitSlop={10}>
             <Ionicons
               name={tts.isSpeaking ? 'volume-mute' : 'volume-high'}
               size={26}
-              color={Colors.secondary}
+              color={colors.systemPurple}
             />
           </TouchableOpacity>
         </View>
 
-        {showRateMenu && (
-          <View style={styles.rateMenu}>
+        {showRateSheet && (
+          <View style={styles.rateSheet}>
             {PLAYBACK_RATES.map((r) => (
               <TouchableOpacity
                 key={r}
-                style={[styles.rateOption, player.rate === r && styles.rateOptionActive]}
                 onPress={() => {
                   player.changeRate(r);
-                  setShowRateMenu(false);
+                  setShowRateSheet(false);
                 }}
+                style={[
+                  styles.rateOption,
+                  {
+                    backgroundColor:
+                      player.rate === r ? colors.systemBlue + '24' : colors.tertiarySystemFill,
+                  },
+                ]}
               >
-                <Text style={styles.rateText}>{r}x</Text>
+                <Text
+                  style={{
+                    ...Typography.subheadline,
+                    color: player.rate === r ? colors.systemBlue : colors.label,
+                    fontWeight: '600',
+                  }}
+                >
+                  {r}×
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -215,37 +255,42 @@ export default function RecordingDetailScreen() {
 
       {/* AI Ozet */}
       {hasAI ? (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Ionicons name="sparkles" size={16} color={Colors.secondary} />
-              <Text style={styles.sectionTitle}>AI Ozet</Text>
-            </View>
-            {!recording.aiSummary && segments.length > 0 && (
-              <TouchableOpacity onPress={handleGenerateSummary} disabled={generatingSummary}>
-                <Text style={{ color: Colors.primary, fontSize: 13 }}>
-                  {generatingSummary ? 'Olusturuluyor...' : 'Olustur'}
+        recording.aiSummary ? (
+          <ListSection header={t('detail.summary')}>
+            <View style={[styles.summaryCard, { backgroundColor: colors.secondarySystemGroupedBackground }]}>
+              <View style={styles.summaryHeader}>
+                <Ionicons name="sparkles" size={14} color={colors.systemPurple} />
+                <Text style={[Typography.caption1, { color: colors.systemPurple, fontWeight: '600' }]}>
+                  AI
                 </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          {recording.aiSummary ? (
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryText}>{recording.aiSummary}</Text>
+              </View>
+              <Text style={[Typography.body, { color: colors.label, lineHeight: 24 }]}>
+                {recording.aiSummary}
+              </Text>
             </View>
-          ) : (
-            <Text style={styles.hintText}>
-              Transkript olusturulduktan sonra AI ozet uretebilirsiniz
-            </Text>
-          )}
-        </View>
+          </ListSection>
+        ) : segments.length > 0 ? (
+          <View style={{ paddingHorizontal: Spacing.base, marginTop: Spacing.base }}>
+            <Button
+              title={
+                generatingSummary ? t('detail.generatingSummary') : `✨ ${t('detail.summary')}`
+              }
+              onPress={handleGenerateSummary}
+              loading={generatingSummary}
+              variant="tinted"
+              icon="sparkles"
+            />
+          </View>
+        ) : null
       ) : (
-        <View style={styles.section}>
-          <View style={styles.aiOnboardCard}>
-            <Ionicons name="sparkles" size={24} color={Colors.secondary} />
-            <Text style={styles.aiOnboardTitle}>AI Ozellikleri</Text>
-            <Text style={styles.aiOnboardText}>
-              DeepSeek API anahtarinizi Ayarlar'dan ekleyerek AI ozet, baslik ve sohbet ozelliklerini etkinlestirin.
+        <View style={{ paddingHorizontal: Spacing.base, marginTop: Spacing.base }}>
+          <View style={[styles.aiOnboard, { backgroundColor: colors.systemPurple + '15' }]}>
+            <Ionicons name="sparkles" size={24} color={colors.systemPurple} />
+            <Text style={[Typography.headline, { color: colors.label }]}>
+              {t('detail.noAiTitle')}
+            </Text>
+            <Text style={[Typography.footnote, { color: colors.secondaryLabel, textAlign: 'center' }]}>
+              {t('detail.noAiDesc')}
             </Text>
           </View>
         </View>
@@ -253,134 +298,207 @@ export default function RecordingDetailScreen() {
 
       {/* Yer imleri */}
       {bookmarks.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Yer Imleri</Text>
+        <ListSection header={t('detail.bookmarks')}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 4 }}>
+            <View style={{ flexDirection: 'row', padding: Spacing.md, gap: Spacing.sm }}>
               {bookmarks.map((bm) => (
-                <TouchableOpacity
+                <TouchableHighlight
                   key={bm.id}
-                  style={styles.bookmark}
+                  underlayColor={colors.systemFill}
                   onPress={() => handleSeekTo(bm.timestamp)}
+                  style={{ borderRadius: Radii.md }}
                 >
-                  <Ionicons name="bookmark" size={16} color={Colors.warning} />
-                  <Text style={styles.bookmarkTime}>{formatTime(bm.timestamp)}</Text>
-                </TouchableOpacity>
+                  <View style={[styles.bookmark, { backgroundColor: colors.tertiarySystemFill }]}>
+                    <Ionicons name="bookmark" size={14} color={colors.systemYellow} />
+                    <Text style={{ ...Typography.caption1, color: colors.label, fontVariant: ['tabular-nums'] }}>
+                      {formatTime(bm.timestamp)}
+                    </Text>
+                  </View>
+                </TouchableHighlight>
               ))}
             </View>
           </ScrollView>
-        </View>
+        </ListSection>
       )}
 
       {/* Transkript */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Transkript</Text>
+      <ListSection header={t('detail.transcript')}>
         {segments.length === 0 ? (
-          <Text style={styles.hintText}>Henuz transkript yok</Text>
+          <View style={[styles.emptyTranscript, { backgroundColor: colors.secondarySystemGroupedBackground }]}>
+            <Ionicons name="document-text-outline" size={32} color={colors.tertiaryLabel} />
+            <Text style={{ color: colors.secondaryLabel, ...Typography.subheadline }}>
+              {t('detail.noTranscript')}
+            </Text>
+          </View>
         ) : (
-          segments.map((seg) => {
-            const isCurrent = player.position >= seg.startTime && player.position <= seg.endTime;
-            return (
-              <TouchableOpacity
-                key={seg.id}
-                style={[styles.segment, isCurrent && styles.segmentActive]}
-                onPress={() => handleSeekTo(seg.startTime)}
-              >
-                <Text style={styles.segmentTime}>{formatTime(seg.startTime)}</Text>
-                <Text style={styles.segmentText}>{seg.text}</Text>
-              </TouchableOpacity>
-            );
-          })
+          <View style={{ backgroundColor: colors.secondarySystemGroupedBackground }}>
+            {segments.map((seg) => {
+              const isCurrent = player.position >= seg.startTime && player.position <= seg.endTime;
+              return (
+                <TouchableHighlight
+                  key={seg.id}
+                  underlayColor={colors.systemFill}
+                  onPress={() => handleSeekTo(seg.startTime)}
+                >
+                  <View
+                    style={[
+                      styles.segmentRow,
+                      isCurrent && { backgroundColor: colors.systemBlue + '15' },
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        ...Typography.caption1,
+                        color: isCurrent ? colors.systemBlue : colors.tertiaryLabel,
+                        fontVariant: ['tabular-nums'],
+                        width: 38,
+                        fontWeight: isCurrent ? '600' : '400',
+                      }}
+                    >
+                      {formatTime(seg.startTime)}
+                    </Text>
+                    <Text
+                      style={{
+                        flex: 1,
+                        ...Typography.body,
+                        color: colors.label,
+                        lineHeight: 22,
+                        fontWeight: isCurrent ? '500' : '400',
+                      }}
+                    >
+                      {seg.text}
+                    </Text>
+                  </View>
+                </TouchableHighlight>
+              );
+            })}
+          </View>
         )}
-      </View>
+      </ListSection>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  metaCard: { padding: 16, gap: 8 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  metaClass: { fontSize: 14, fontWeight: '600' },
-  metaText: { fontSize: 12, color: Colors.textSecondary },
-  playerCard: {
-    margin: 16,
-    marginTop: 0,
-    padding: 16,
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 16,
+  container: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  hero: {
+    paddingTop: 100,
+    paddingBottom: Spacing.lg,
+    paddingHorizontal: Spacing.base,
+    gap: Spacing.sm,
   },
-  playerTime: { flexDirection: 'row', justifyContent: 'space-between' },
-  playerTimeText: { fontSize: 11, color: Colors.textSecondary, fontVariant: ['tabular-nums'] },
+  heroTitle: {
+    color: 'white',
+    ...Typography.title1,
+  },
+  heroMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  heroDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'white',
+  },
+  heroMeta: {
+    color: 'rgba(255,255,255,0.9)',
+    ...Typography.footnote,
+    fontWeight: '500',
+  },
+
+  player: {
+    margin: Spacing.base,
+    padding: Spacing.base,
+    borderRadius: Radii.lg,
+    gap: Spacing.sm,
+  },
+  playerTime: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  playerTimeText: {
+    ...Typography.caption1,
+    fontVariant: ['tabular-nums'],
+  },
   playerControls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 12,
-    paddingHorizontal: 8,
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
   },
-  rateButton: {
+  rateChip: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    backgroundColor: Colors.background,
-    borderRadius: 12,
+    borderRadius: Radii.full,
   },
-  rateText: { fontSize: 12, fontWeight: '600', color: Colors.textPrimary },
-  rateMenu: {
+  rateChipText: {
+    ...Typography.caption1,
+    fontWeight: '700',
+  },
+  playButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  rateSheet: {
     flexDirection: 'row',
-    gap: 6,
-    marginTop: 12,
     flexWrap: 'wrap',
+    gap: 6,
+    marginTop: Spacing.sm,
     justifyContent: 'center',
   },
   rateOption: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: Colors.background,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: Radii.md,
   },
-  rateOptionActive: { backgroundColor: `${Colors.primary}20` },
-  section: { padding: 16, paddingTop: 0, gap: 8 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+
   summaryCard: {
-    backgroundColor: `${Colors.secondary}15`,
-    padding: 14,
-    borderRadius: 12,
+    padding: Spacing.base,
+    gap: Spacing.sm,
   },
-  summaryText: { fontSize: 14, color: Colors.textPrimary, lineHeight: 20 },
-  aiOnboardCard: {
-    backgroundColor: Colors.cardBackground,
-    padding: 16,
-    borderRadius: 12,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: `${Colors.secondary}40`,
-    borderStyle: 'dashed',
-  },
-  aiOnboardTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  aiOnboardText: { fontSize: 12, color: Colors.textSecondary },
-  hintText: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', padding: 20 },
-  bookmark: {
-    alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    padding: 8,
-    borderRadius: 8,
-    minWidth: 60,
-    gap: 2,
-  },
-  bookmarkTime: { fontSize: 11, fontVariant: ['tabular-nums'], color: Colors.textPrimary },
-  segment: {
+  summaryHeader: {
     flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    alignItems: 'center',
+    gap: 4,
   },
-  segmentActive: { backgroundColor: `${Colors.primary}15` },
-  segmentTime: { fontSize: 11, color: Colors.primary, fontVariant: ['tabular-nums'], width: 40, textAlign: 'right' },
-  segmentText: { flex: 1, fontSize: 14, color: Colors.textPrimary, lineHeight: 20 },
+  aiOnboard: {
+    padding: Spacing.lg,
+    borderRadius: Radii.lg,
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+
+  bookmark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radii.md,
+  },
+
+  segmentRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    paddingVertical: 8,
+    paddingHorizontal: Spacing.base,
+  },
+  emptyTranscript: {
+    padding: Spacing.xl,
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
 });

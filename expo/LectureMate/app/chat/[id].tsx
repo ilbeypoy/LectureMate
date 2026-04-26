@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../constants/colors';
+import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
+import { useTheme, Typography, Spacing, Radii } from '../../constants/theme';
 import {
   getRecordingById,
   getSegmentsForRecording,
@@ -26,6 +28,9 @@ import type { LMChatMessage, LMRecording, LMTranscriptSegment } from '../../type
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+
   const [recording, setRecording] = useState<LMRecording | null>(null);
   const [segments, setSegments] = useState<LMTranscriptSegment[]>([]);
   const [messages, setMessages] = useState<LMChatMessage[]>([]);
@@ -34,9 +39,7 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
-    load();
-  }, [id]);
+  useEffect(() => { load(); }, [id]);
 
   const load = async () => {
     const rec = await getRecordingById(id);
@@ -53,6 +56,8 @@ export default function ChatScreen() {
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || loading || !recording) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
     const userMsg: LMChatMessage = {
       id: generateId(),
@@ -88,17 +93,18 @@ export default function ChatScreen() {
       await insertMessage(assistantMsg);
       setMessages((prev) => [...prev, assistantMsg]);
       setStreaming('');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     } catch (e: any) {
-      Alert.alert('Hata', e.message);
+      Alert.alert(t('common.error'), e.message);
     }
     setLoading(false);
   };
 
   const handleClear = () => {
-    Alert.alert('Sohbeti Temizle?', 'Tum mesajlar silinecek.', [
-      { text: 'Iptal', style: 'cancel' },
+    Alert.alert(t('chat.clearTitle'), t('chat.clearMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Temizle',
+        text: t('chat.clear'),
         style: 'destructive',
         onPress: async () => {
           await clearMessagesForRecording(id);
@@ -109,14 +115,14 @@ export default function ChatScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.systemGroupedBackground }]}>
       <Stack.Screen
         options={{
-          title: 'AI Sohbet',
+          title: t('chat.title'),
           headerRight: () =>
             messages.length > 0 ? (
-              <TouchableOpacity onPress={handleClear}>
-                <Ionicons name="trash" size={20} color={Colors.accent} />
+              <TouchableOpacity onPress={handleClear} hitSlop={10}>
+                <Ionicons name="trash-outline" size={20} color={colors.systemRed} />
               </TouchableOpacity>
             ) : null,
         }}
@@ -125,17 +131,23 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={90}
       >
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
+          contentContainerStyle={{ padding: Spacing.base, gap: Spacing.sm }}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         >
+          {/* Intro */}
           <View style={styles.intro}>
-            <Ionicons name="sparkles" size={32} color={Colors.secondary} />
-            <Text style={styles.introTitle}>AI Asistan</Text>
-            <Text style={styles.introText}>
-              "{recording?.title}" kaydinin transkriptine dayali sorular sorabilirsiniz.
+            <View style={[styles.introIcon, { backgroundColor: colors.systemPurple + '22' }]}>
+              <Ionicons name="sparkles" size={28} color={colors.systemPurple} />
+            </View>
+            <Text style={[Typography.title3, { color: colors.label }]}>
+              {t('chat.intro')}
+            </Text>
+            <Text style={[Typography.footnote, { color: colors.secondaryLabel, textAlign: 'center', paddingHorizontal: Spacing.lg }]}>
+              {t('chat.introDesc', { title: recording?.title ?? '...' })}
             </Text>
           </View>
 
@@ -156,33 +168,37 @@ export default function ChatScreen() {
           )}
 
           {loading && !streaming && (
-            <View style={styles.loadingBubble}>
-              <Text style={{ color: Colors.textSecondary }}>Dusunuyor...</Text>
+            <View style={styles.thinkingBubble}>
+              <View style={[styles.dot, { backgroundColor: colors.tertiaryLabel }]} />
+              <View style={[styles.dot, { backgroundColor: colors.tertiaryLabel }]} />
+              <View style={[styles.dot, { backgroundColor: colors.tertiaryLabel }]} />
             </View>
           )}
         </ScrollView>
 
-        <View style={styles.inputBar}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Bir soru sorun..."
-            placeholderTextColor={Colors.textSecondary}
-            value={input}
-            onChangeText={setInput}
-            multiline
-            maxLength={1000}
-          />
-          <TouchableOpacity
-            onPress={sendMessage}
-            disabled={!input.trim() || loading}
-            style={styles.sendButton}
-          >
-            <Ionicons
-              name="send"
-              size={20}
-              color={!input.trim() || loading ? Colors.textSecondary : Colors.primary}
+        {/* Input */}
+        <View style={[styles.inputBar, { backgroundColor: colors.secondarySystemGroupedBackground, borderTopColor: colors.separator }]}>
+          <View style={[styles.inputWrap, { backgroundColor: colors.tertiarySystemFill }]}>
+            <TextInput
+              style={[styles.input, { color: colors.label }]}
+              placeholder={t('chat.inputPlaceholder')}
+              placeholderTextColor={colors.tertiaryLabel}
+              value={input}
+              onChangeText={setInput}
+              multiline
+              maxLength={1000}
+              onSubmitEditing={sendMessage}
             />
-          </TouchableOpacity>
+            {input.trim() && (
+              <TouchableOpacity
+                onPress={sendMessage}
+                disabled={loading}
+                style={[styles.sendBtn, { backgroundColor: colors.systemBlue }]}
+              >
+                <Ionicons name="arrow-up" size={18} color="white" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -190,73 +206,100 @@ export default function ChatScreen() {
 }
 
 function Bubble({ message }: { message: LMChatMessage }) {
+  const { colors } = useTheme();
   const isUser = message.role === 'user';
+
   return (
-    <View style={[styles.bubbleRow, isUser && styles.bubbleRowUser]}>
-      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
-        <View style={styles.bubbleHeader}>
-          <Ionicons
-            name={isUser ? 'person' : 'sparkles'}
-            size={11}
-            color={isUser ? Colors.primary : Colors.secondary}
-          />
-          <Text
-            style={[
-              styles.bubbleRole,
-              { color: isUser ? Colors.primary : Colors.secondary },
-            ]}
-          >
-            {isUser ? 'Sen' : 'AI Asistan'}
-          </Text>
-        </View>
-        <Text style={styles.bubbleText}>{message.content}</Text>
+    <View
+      style={[
+        styles.bubbleRow,
+        { justifyContent: isUser ? 'flex-end' : 'flex-start' },
+      ]}
+    >
+      <View
+        style={[
+          styles.bubble,
+          isUser
+            ? { backgroundColor: colors.systemBlue }
+            : { backgroundColor: colors.secondarySystemGroupedBackground },
+        ]}
+      >
+        <Text
+          style={{
+            ...Typography.body,
+            color: isUser ? '#FFFFFF' : colors.label,
+            lineHeight: 22,
+          }}
+        >
+          {message.content}
+        </Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  intro: { alignItems: 'center', padding: 20, gap: 8 },
-  introTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  introText: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' },
+  container: { flex: 1 },
+  intro: {
+    alignItems: 'center',
+    padding: Spacing.lg,
+    gap: Spacing.sm,
+    marginBottom: Spacing.base,
+  },
+  introIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   bubbleRow: { flexDirection: 'row' },
-  bubbleRowUser: { justifyContent: 'flex-end' },
   bubble: {
-    maxWidth: '85%',
-    padding: 12,
-    borderRadius: 16,
-    gap: 4,
-  },
-  bubbleUser: { backgroundColor: `${Colors.primary}15` },
-  bubbleAssistant: { backgroundColor: Colors.cardBackground },
-  bubbleHeader: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  bubbleRole: { fontSize: 10, fontWeight: '600' },
-  bubbleText: { fontSize: 14, color: Colors.textPrimary, lineHeight: 20 },
-  loadingBubble: { padding: 12, alignSelf: 'flex-start' },
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 12,
-    gap: 8,
-    backgroundColor: Colors.cardBackground,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  textInput: {
-    flex: 1,
-    maxHeight: 100,
-    backgroundColor: Colors.background,
+    maxWidth: '80%',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
-    fontSize: 15,
-    color: Colors.textPrimary,
   },
-  sendButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+  thinkingBubble: {
+    flexDirection: 'row',
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(120,120,128,0.16)',
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  inputBar: {
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.base,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: Radii.full,
+    minHeight: 36,
+  },
+  input: {
+    flex: 1,
+    ...Typography.body,
+    paddingVertical: 6,
+    maxHeight: 100,
+  },
+  sendBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
   },
 });

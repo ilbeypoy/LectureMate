@@ -19,7 +19,9 @@
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Ders kaydi icin mikrofon gerekiyor",
         "NSSpeechRecognitionUsageDescription": "Ders transkripti icin konusma tanima kullanilacak",
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -59,7 +61,10 @@
           "icon": "./assets/icon.png",
           "color": "#4A90D9"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-secure-store",
+      "expo-sqlite"
     ]
   }
 }
